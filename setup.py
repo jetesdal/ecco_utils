@@ -13,7 +13,7 @@ setup(
     url= 'https://github.com/jetesdal/ecco_utils.git',
     py_modules= ['ecco_utils'],
     install_requires= [
-	'numpy >= 1.11',
-	],
+	'numpy >= 1.13',
+	'xarray >= 0.9.6],
     version="0.1"
 )
