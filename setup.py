@@ -14,6 +14,6 @@ setup(
     py_modules= ['ecco_utils'],
     install_requires= [
 	'numpy >= 1.13',
-	'xarray >= 0.9.6],
+	'xarray >= 0.9.6'],
     version="0.1"
 )
