@@ -26,7 +26,7 @@ import os
 import numpy as np 
 import xarray as xr
 
-def open_ecco_grid(grid_dir=None):
+def open_ecco_grid(grid_dir):
     if grid_dir is None:
         grid_dir = '/nctiles_grid/'
     grid = xr.open_mfdataset(grid_dir + 'GRID.*.nc', concat_dim='face')
@@ -34,7 +34,7 @@ def open_ecco_grid(grid_dir=None):
     grid = grid.rename({'i3': 'i4'}).rename({'i2': 'i3'}).rename({'i1': 'i2'})
     return grid
 
-def open_ecco_single_variable(base_dir=None, varname):
+def open_ecco_single_variable(base_dir, varname):
     if base_dir is None:
         base_dir = '/nctiles_monthly'
     ds = xr.open_mfdataset(os.path.join(base_dir, varname, '*.nc'),concat_dim='face')
@@ -117,7 +117,7 @@ def open_ecco_single_tendency(varname, dirname, base_dir):
     
     return ds
 
-def open_ecco_tendencies(base_dir=None, *varnames, **keyword_parameters):
+def open_ecco_tendencies(base_dir, *varnames, **keyword_parameters):
     if base_dir is None:
         base_dir = '/nctiles_tendencies'
     if ('base_dir' in keyword_parameters):
@@ -125,7 +125,7 @@ def open_ecco_tendencies(base_dir=None, *varnames, **keyword_parameters):
     darrays = [open_ecco_single_tendency(v, v, base_dir) for v in varnames]
     return xr.merge(darrays)
 
-def open_ecco_snapshots(base_dir=None, *varnames, **keyword_parameters):
+def open_ecco_snapshots(base_dir, *varnames, **keyword_parameters):
     if base_dir is None:
         base_dir = '/nctiles_monthly_snapshots'
     if ('base_dir' in keyword_parameters):
