@@ -26,31 +26,60 @@ import os
 import numpy as np 
 import xarray as xr
 
+
 def open_ecco_grid(grid_dir):
-    if grid_dir is None:
-        grid_dir = '/nctiles_grid/'
-    grid = xr.open_mfdataset(grid_dir + 'GRID.*.nc', concat_dim='face')
+    """
+    Load ECCOv4 grid into xarray dataset.
+
+    Parameters
+    ----------
+    grid_dir : str
+        Directory path of ECCOv4 grid files
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 grid info
+    """
+    grid = xr.open_mfdataset(os.path.join(grid_dir, 'GRID.*.nc'), concat_dim='face')
+
     # Renaming dimensions to match data variables
     grid = grid.rename({'i3': 'i4'}).rename({'i2': 'i3'}).rename({'i1': 'i2'})
+
     return grid
 
-def open_ecco_single_variable(base_dir, varname):
-    if base_dir is None:
-        base_dir = '/nctiles_monthly'
-    ds = xr.open_mfdataset(os.path.join(base_dir, varname, '*.nc'),concat_dim='face')
-    # make time an actual dimension
+def open_ecco_single_variable(ncdir, varname):
+    """
+    Load ECCOv4 variable into xarray dataset.
+
+    Parameters
+    ----------
+    ncdir : str
+        Directory path of ECCOv4 variable files
+
+    varname: str
+        Name of variable
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 variable
+    """
+    ds = xr.open_mfdataset(os.path.join(ncdir, varname, '*.nc'),concat_dim='face')
+
+    # Make time an actual dimension
     if 'tim' in ds:
         tdim = ds['tim'].dims[0]
         ds = ds.swap_dims({tdim: 'tim'})
         ds = ds.rename({'tim': 'time'})
-    # make sure that the dimension names are consistent
+
+    # Make sure that the dimension names are consistent
     if ds['area'].dims == ('face', 'i2', 'i3'):
         # we probably have a 2D field
         ds = ds.rename({'i3': 'i4'}).rename({'i2': 'i3'})
     ds = ds.reset_coords()
     da = ds[varname]
     dims = list(da.dims)
-    # possibly transpose
+
+    # Possibly transpose
     if 'time' in dims:
         if dims[0] != 'time':
             newdims = [d for d in dims]
@@ -60,20 +89,54 @@ def open_ecco_single_variable(base_dir, varname):
     return da
 
 def open_ecco_variables(ncdir, grid_dir=None, variables=None):
+    """
+    Load multiple ECCOv4 variables into single xarray dataset.
+
+    Parameters
+    ----------
+    ncdir : str
+        Directory path of ECCOv4 variable files
+
+    grid_dir : str
+        Directory path of ECCOv4 grid files
+
+
+    variables:
+        List of variables to be imported
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 variables
+    """
     if variables is None:
         variables = []
         for fname in os.listdir(ncdir):
             if os.path.isdir(os.path.join(ncdir,fname)):
                 variables.append(fname)
-    darrays = [open_ecco_single_variable(v, ncdir) for v in variables]
+    darrays = [open_ecco_single_variable(ncdir, v) for v in variables]
     if not grid_dir is None:
         grid = open_ecco_grid(grid_dir)
         grid = grid.set_coords(grid.data_vars)
         darrays.append(grid)
     return xr.merge(darrays)
 
-def open_ecco_single_tendency(varname, dirname, base_dir):
-    ds = xr.open_mfdataset(os.path.join(base_dir, dirname, '*.nc'),concat_dim='face')
+def open_ecco_single_tendency(ncdir, dirname):
+    """
+    Load ECCOv4 tendency field into xarray dataset. This function is useful for ECCOv4r2 files.
+
+    Parameters
+    ----------
+    ncdir : str
+        Directory path of tendency files
+
+    dirname: str
+        Name of tendency
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 tendency
+    """
+    ds = xr.open_mfdataset(os.path.join(ncdir, dirname, '*.nc'),concat_dim='face')
 
     # make time an actual dimension
     if 'tim' in ds:
@@ -117,20 +180,65 @@ def open_ecco_single_tendency(varname, dirname, base_dir):
     
     return ds
 
-def open_ecco_tendencies(base_dir, *varnames, **keyword_parameters):
-    if base_dir is None:
-        base_dir = '/nctiles_tendencies'
-    if ('base_dir' in keyword_parameters):
-        base_dir = keyword_parameters['base_dir']
-    darrays = [open_ecco_single_tendency(v, v, base_dir) for v in varnames]
+def open_ecco_tendencies(ncdir, grid_dir=None, variables=None):
+    """
+    Load multiple ECCOv4 tendencies into single xarray dataset. This function is useful for ECCOv4r2 files.
+
+    Parameters
+    ----------
+    ncdir : str
+        Directory path of ECCOv4 variable files
+
+    grid_dir : str
+        Directory path of ECCOv4 grid files
+
+
+    variables:
+        List of variables to be imported
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 tendencies
+    """
+    if variables is None:
+        variables = []
+        for fname in os.listdir(ncdir):
+            if os.path.isdir(os.path.join(ncdir,fname)):
+                variables.append(fname)
+    darrays = [open_ecco_single_tendency(ncdir, v) for v in variables]
+    if not grid_dir is None:
+        grid = open_ecco_grid(grid_dir)
+        grid = grid.set_coords(grid.data_vars)
+        darrays.append(grid)
     return xr.merge(darrays)
 
-def open_ecco_snapshots(base_dir, *varnames, **keyword_parameters):
-    if base_dir is None:
-        base_dir = '/nctiles_monthly_snapshots'
-    if ('base_dir' in keyword_parameters):
-        base_dir = keyword_parameters['base_dir']
-    darrays = [open_ecco_single_tendency(v,
-                    'Ssnapshot' if v == 'SALT' else 'Tsnapshot',
-                    base_dir) for v in varnames]
+def open_ecco_snapshots(ncdir, grid_dir=None, variables=None):
+    """
+    Load ECCOv4 snapshots into xarray dataset. This function is useful for ECCOv4r2 files.
+
+    Parameters
+    ----------
+    ncdir : str
+        Directory path of snapshot files
+
+    grid_dir : str
+        Directory path of ECCOv4 grid files
+
+    variables:
+        List of variables to be imported
+        
+    Returns
+    -------
+    xarray.Dataset with ECCOv4 snapshots
+    """
+    if variables is None:
+        variables = []
+        for fname in os.listdir(ncdir):
+            if os.path.isdir(os.path.join(ncdir,fname)):
+                variables.append(fname)
+    darrays = [open_ecco_single_tendency(ncdir, 'Ssnapshot' if v == 'SALT' else 'Tsnapshot') for v in variables]
+    if not grid_dir is None:
+        grid = open_ecco_grid(grid_dir)
+        grid = grid.set_coords(grid.data_vars)
+        darrays.append(grid)
     return xr.merge(darrays)
