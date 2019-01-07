@@ -27,6 +27,100 @@ import numpy as np
 import xarray as xr
 
 
+def quick_llc_plot(data, axis_off=False, **kwargs):
+    face_to_axis = {0: (2, 0), 1: (1, 0), 2: (0, 0),
+                    3: (2, 1), 4: (1, 1), 5: (0, 1),
+                    7: (0, 2), 8: (1, 2), 9: (2, 2),
+                    10: (0, 3), 11: (1, 3), 12: (2, 3)}
+    transpose = [7, 8, 9, 10, 11, 12]
+    gridspec_kw = dict(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+    fig, axes = plt.subplots(nrows=3, ncols=4, gridspec_kw=gridspec_kw, figsize=(10,4))
+    for face, (j, i) in face_to_axis.items():
+        data_ax = data.sel(face=face)
+        ax = axes[j,i]
+        yincrease = True
+        if face in transpose:
+            data_ax = data_ax.transpose()
+            yincrease = False
+        p = data_ax.plot(ax=ax, yincrease=yincrease, **kwargs)
+        #p = data_ax.plot(ax=ax, **kwargs)
+        if axis_off:
+            ax.axis('off')
+        ax.set_title('')
+    # use implicit way
+    cbar = fig.colorbar(p, ax=axes.ravel().tolist(), shrink=0.95)
+
+
+def v4_basin(nameBasin, mskBasins, lons, lats):
+    """Obtains the mask of an ocean basin
+    Input  nameBasin: Name of the basin of interest (atl, pac, ind, arctic, etc.)
+           mskBasins: Data array with basin masks (coords.basin)
+           lons: Longitude of LLC grid (coords.XC)
+           lons: Latitude of LLC grid (coords.YC)
+           
+    Output mskC: Mmask for tracer points (0 = outside basin; 1 = inside basin)
+    
+    Function is based on gcmfaces v4_basin.m function. Additonal basin masks are added:
+    'npac', 'tropac', 'spac', 'spna', 'natl', 'troatl', 'satl', 'so'
+    'npac': North Pacific ('pac' where lat > 20)
+    'tropac': Tropical Pacific ('pac' where 20 >= lat >= -20)
+    'spac': South Pacific ('pac' where lat < -20)
+    'spna': Subpolar North Atlantic( 'atlExt' where  46 < lat < 65)
+    'natl': North Atlantic ('atl' where lat > 20)
+    'troatl': Tropical Atlantic ('atl' where 20 >= lat >= -20)
+    'satl': South Atlantic ('atl' where lat < -20)
+    'so': Southern Ocean (where lat < -50)"""
+    
+    basins = ['pac','atl','ind','arct','bering',
+              'southChina','mexico','okhotsk','hudson','med',
+              'java','north','japan','timor','eastChina','red','gulf',
+              'baffin','gin','barents']
+    atlExt = ['atl','mexico','hudson','med','north','baffin','gin']
+    pacExt = ['pac','bering','okhotsk','japan','eastChina']
+    indExt = ['ind','southChina','java','timor','red','gulf']
+    
+    # list of selected basins:
+    if not isinstance(nameBasin, list):
+        nameBasin = [nameBasin]
+    if 'atlExt' in nameBasin:
+        nameBasin = nameBasin + atlExt
+    if 'pacExt' in nameBasin:                    
+        nameBasin = nameBasin + pacExt           
+    if 'indExt' in nameBasin:                    
+        nameBasin = nameBasin + indExt           
+  
+    # derive tracer points mask
+    mskC = 0 * mskBasins
+    for idx, name in enumerate(basins):
+        if name in nameBasin:
+            mskC.values[mskBasins.values == idx + 1] = 1
+    
+    for name in nameBasin:
+        if name == 'npac':
+            mskC.values[(mskBasins.values == basins.index('pac')+1)&(lats.values>20)] = 1
+        if name == 'tropac':
+            mskC.values[(mskBasins.values == basins.index('pac')+1)&(lats.values>=-20)&(lats.values<=20)] = 1
+        if name == 'spac':
+            mskC.values[(mskBasins.values == basins.index('pac')+1)&(lats.values<-20)] = 1
+        if name == 'spna':
+            mskC.values[(mskBasins.values == basins.index('atlExt')+1)&(lats.values>46)&(lats.values<65)] = 1
+        if name == 'natl':
+            mskC.values[(mskBasins.values == basins.index('atl')+1)&(lats.values>20)] = 1
+        if name == 'troatl':
+            mskC.values[(mskBasins.values == basins.index('atl')+1)&(lats.values>=-20)&(lats.values<=20)] = 1
+        if name == 'satl':
+            mskC.values[(mskBasins.values == basins.index('atl')+1)&(lats.values<-20)] = 1
+        if name == 'so':
+            mskC.values[(lats<-50)] = 1
+
+    # check for invalid (empty) output mask
+    if np.nansum(mskC.values) == 0:
+        raise ValueError('The basin(s) is unknown', nameBasin)
+    
+    mskC.values[mskC.values == 0] = np.nan
+    return mskC
+
+
 def open_ecco_grid(grid_dir):
     """
     Load ECCOv4 grid into xarray dataset.
