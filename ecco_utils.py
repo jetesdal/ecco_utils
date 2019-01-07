@@ -25,7 +25,7 @@
 import os
 import numpy as np 
 import xarray as xr
-
+import matplotlib.pyplot as plt
 
 def quick_llc_plot(data, axis_off=False, **kwargs):
     face_to_axis = {0: (2, 0), 1: (1, 0), 2: (0, 0),
