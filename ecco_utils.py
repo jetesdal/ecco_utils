@@ -58,7 +58,7 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
            lons: Longitude of LLC grid (coords.XC)
            lons: Latitude of LLC grid (coords.YC)
            
-    Output mskC: Mmask for tracer points (0 = outside basin; 1 = inside basin)
+    Output mskC: Mask for tracer points (0 = outside basin; 1 = inside basin)
     
     Function is based on gcmfaces v4_basin.m function. Additonal basin masks are added:
     'npac', 'tropac', 'spac', 'spna', 'natl', 'troatl', 'satl', 'so'
@@ -103,7 +103,8 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
         if name == 'spac':
             mskC.values[(mskBasins.values == basins.index('pac')+1)&(lats.values<-20)] = 1
         if name == 'spna':
-            mskC.values[(mskBasins.values == basins.index('atlExt')+1)&(lats.values>46)&(lats.values<65)] = 1
+            for _name in atlExt:
+                mskC.values[(mskBasins.values == basins.index(_name)+1)&(lats.values>46)&(lats.values<65)] = 1
         if name == 'natl':
             mskC.values[(mskBasins.values == basins.index('atl')+1)&(lats.values>20)] = 1
         if name == 'troatl':
@@ -111,7 +112,8 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
         if name == 'satl':
             mskC.values[(mskBasins.values == basins.index('atl')+1)&(lats.values<-20)] = 1
         if name == 'so':
-            mskC.values[(lats<-50)] = 1
+            for _name in ['pac','atl','ind']:
+                mskC.values[(mskBasins.values == basins.index(_name)+1)&(lats.values<-50)] = 1
 
     # check for invalid (empty) output mask
     if np.nansum(mskC.values) == 0:
@@ -119,6 +121,7 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
     
     mskC.values[mskC.values == 0] = np.nan
     return mskC
+
 
 
 def open_ecco_grid(grid_dir):
