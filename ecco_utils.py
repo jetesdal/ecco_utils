@@ -69,7 +69,9 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
     'natl': North Atlantic ('atl' where lat > 20)
     'troatl': Tropical Atlantic ('atl' where 20 >= lat >= -20)
     'satl': South Atlantic ('atl' where lat < -20)
-    'so': Southern Ocean (where lat < -50)"""
+    'so': Southern Ocean (where lat < -50)
+    'troind': Tropical Indian Ocean ('ind' where lat >= -20)
+    'sind': Southern Indian Ocean ('ind' where lat <= -20)"""
     
     basins = ['pac','atl','ind','arct','bering',
               'southChina','mexico','okhotsk','hudson','med',
@@ -114,13 +116,17 @@ def v4_basin(nameBasin, mskBasins, lons, lats):
         if name == 'so':
             for _name in ['pac','atl','ind']:
                 mskC.values[(mskBasins.values == basins.index(_name)+1)&(lats.values<-50)] = 1
+        if name == 'troind':
+            mskC.values[(mskBasins.values == basins.index('ind')+1)&(lats.values>=-20)] = 1
+        if name == 'sind':
+            mskC.values[(mskBasins.values == basins.index('ind')+1)&(lats.values<=-20)] = 1
 
     # check for invalid (empty) output mask
     if np.nansum(mskC.values) == 0:
         raise ValueError('The basin(s) is unknown', nameBasin)
     
     mskC.values[mskC.values == 0] = np.nan
-    return mskC
+    return mskC      
 
 
 
